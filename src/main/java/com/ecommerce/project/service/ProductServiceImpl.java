@@ -30,9 +30,9 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("Category", "CategoryId", categoryId));
 
         product.setImage("default.png");
-        product.setCategory(category);
         double specialPrice = product.getPrice() - ((product.getDiscount() * 0.01) * product.getPrice());
         product.setSpecialPrice(specialPrice);
+        product.setCategory(category);
         Product saveProduct = productRepository.save(product);
         return modelMapper.map(saveProduct, ProductRequest.class);
     }
@@ -60,5 +60,46 @@ public class ProductServiceImpl implements ProductService {
         return productResponse;
     }
 
+    @Override
+    public ProductResponse searchByKeyword(String keyword) {
+        List<Product> listOfProducts = productRepository.findByProductNameLikeIgnoreCase('%' + keyword + '%');
+        List<ProductRequest> productRequests = listOfProducts.stream()
+                .map(p -> modelMapper.map(p, ProductRequest.class)).toList();
 
+        ProductResponse productResponse = new ProductResponse();
+        productResponse.setContent(productRequests);
+        return productResponse;
+    }
+
+    @Override
+    public ProductRequest updateProduct(Product product, Long productId) {
+        Product existingProduct = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "ProductId", productId));
+        existingProduct.setProductName(product.getProductName());
+        existingProduct.setDescription(product.getDescription());
+        existingProduct.setPrice(product.getPrice());
+        existingProduct.setDiscount(product.getDiscount());
+        existingProduct.setQuantity(product.getQuantity());
+        if (product.getDiscount() != null) {
+            double specialPrice =
+                    product.getPrice() - ((product.getDiscount() / 100.0) * product.getPrice());
+            existingProduct.setSpecialPrice(specialPrice);
+        } else {
+            existingProduct.setSpecialPrice(product.getSpecialPrice());
+        }
+        Product savedProduct = productRepository.save(existingProduct);
+        return modelMapper.map(savedProduct, ProductRequest.class);
+    }
+
+    @Override
+    public ProductRequest deleteProduct(Long productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "ProductId", productId));
+        productRepository.delete(product);
+        return modelMapper.map(product, ProductRequest.class);
+
+    }
 }
+
+
+
